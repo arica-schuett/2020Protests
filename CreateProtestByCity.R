@@ -1,7 +1,7 @@
 library(tidyverse)
 library(lubridate)
 
-ccc.acs_complete <- read.csv("/Users/aricaschuett/Documents/protest/Shea + Arica/ccc.acs_complete.csv")
+#ccc.acs_complete <- read.csv("/Users/aricaschuett/Documents/protest/Shea + Arica/ccc.acs_complete.csv")
 #ccc.acs <- read.csv("/Users/aricaschuett/Documents/protest/Shea + Arica/ccc-acsTotal.csv")
 #mapping.acs <- read.csv("/Users/aricaschuett/Documents/protest/Shea + Arica/mapping.acs.csv")
 #mapping <- read.csv("/Users/aricaschuett/Documents/protest/Shea + Arica/mapping.csv")
@@ -11,23 +11,51 @@ ccc.acs_complete <- read.csv("/Users/aricaschuett/Documents/protest/Shea + Arica
 ### Count of general left-wing protests (Valence in CCC, check code book) jan 2014-pre GF, 
 ### Democratic vote share 2016 MITESL, FIPS 
 
-ccc_spatial_join <- read.csv("/Users/aricaschuett/Documents/protest/Shea + Arica/ccc_spatial_join2.csv", colClasses = c("GEOID" = "character"))
-ccc_spatial_join$PLACEFIPS <- ccc_spatial_join$GEOID
-mapping_acs_join <- read.csv("/Users/aricaschuett/Documents/protest/Shea + Arica/ACS_Mapping.csv", colClasses = c("PLACEFIPS" = "character"))
+ccc_spatial_join <- read.csv("/Users/aricaschuett/Documents/protest/Shea + Arica/ccc_spatial_join.csv", colClasses = c("PLACEFIPS" = "character"))
 
-mapping <- mapping_acs_join
-ccc <- ccc_spatial_join
+#mapping_acs_join <- read.csv("/Users/aricaschuett/Documents/protest/Shea + Arica/ACS_Mapping.csv", header=FALSE)
+
+# policing, race #starting keywords not patriotism Not Pro-police not anti-mask or anti
+mapping <- read.csv("/Users/aricaschuett/Documents/protest/Shea + Arica/mapping_spatial_join.csv", colClasses = c("PLACEFIPS" = "character"))
+mapping <- mapping %>%
+  filter(!grepl("Vehicle", cause_of_death))
+
+####  threat
+mapping$wapo_threat_level[ mapping$wapo_threat_level=="Attack"|
+                             mapping$wapo_threat_level=="Brandished Weapon" |
+                             mapping$wapo_threat_level=="Sudden Threatening Movement" |
+                             mapping$wapo_threat_level=="Used Weapon"]<-"High"   ### unclear if including brandishing or sudden threatening movement as HIGH threat
+
+mapping$date <- mdy(mapping$date)
 
 mapping <- mapping %>%
-  mutate(date = ymd(date))
+  mutate(date = ymd(date),  # Convert to Date type
+         year = year(date))      # Extract year
+hist(mapping$year) 
+
+
+
+mapping <- mapping %>%
+  mutate(mappingPreGF = ifelse(date >= "2017-01-01" & date <= "2020-05-20", 1, 0),
+         mappingPostGF = ifelse(date>= "2020-05-20" & date <= "2020-09-01", 1, 0),
+         mappingBlackOnlyPreGF = ifelse(race == "Black" & date >= "2017-01-01" & date <= "2020-05-20", 1, 0),
+         mappingBlackOnlyPostGF = ifelse(race == "Black" & date >= "2020-05-20" & date <= "2020-09-01", 1, 0))
+
+
+
+#mapping <- mapping_acs_join
+ccc <- ccc_spatial_join
+
+#mapping <- mapping %>%
+#  mutate(date = mdy(date))
 
 ccc <- ccc %>%
   mutate(date = mdy(date))
 
-mapping <- mapping %>%
-  mutate(
-    date = ymd(date),  # Convert to Date type
-    year = year(date  ))      # Extract year
+#mapping <- mapping %>%
+#  mutate(
+#    date = ymd(date),  # Convert to Date type
+#    year = year(date  ))      # Extract year
 
 
 ccc <- ccc %>%
@@ -44,24 +72,24 @@ mapping <- mapping %>%
          mappingBlackOnlyPreGF = ifelse(race == "Black" & date >= as.Date("2017-01-01") & date < as.Date("2020-05-25"), 1, 0),
          mappingBlackOnlyPostGF = ifelse(race == "Black" & date >= as.Date("2020-05-25") & date <= as.Date("2020-09-01"), 1, 0))
 
-mapping <- mapping %>%
-  dplyr::select(name, age, gender, race, date, city, state, zip, county, agency_responsible, 
-         cause_of_death, officer_charged, allegedly_armed, wapo_armed, wapo_threat_level, wapo_flee, 
-         wapo_body_camera, wapo_id, off_duty_killing, officer_known_past_shootings, mappingPreGF, 
-         mappingPostGF, mappingBlackOnlyPostGF, mappingBlackOnlyPreGF, POPULATION, POP_SQMI, year, 
-         population, BlackPop, BlackPov, Bachelors, Masters, ProfDegree, Pop25Plus, ProfDegree, 
-         Doctorate, CollegeStudents, PLACEFIPS)
+#mapping <- mapping %>%
+#  dplyr::select(name, age, gender, race, date, city, state, zip, county, agency_responsible, 
+#         cause_of_death, officer_charged, allegedly_armed, wapo_armed, wapo_threat_level, wapo_flee, 
+#         wapo_body_camera, wapo_id, off_duty_killing, officer_known_past_shootings, mappingPreGF, 
+#         mappingPostGF, mappingBlackOnlyPostGF, mappingBlackOnlyPreGF, POPULATION, POP_SQMI, year, 
+#         BlackPop, BlackPov, Bachelors, Masters, ProfDegree, Pop25Plus, ProfDegree, 
+#         Doctorate, CollegeStudents, PLACEFIPS)
 
 ccc <- ccc %>%
-  dplyr::select(date, locality, state, population, type, actors, claims, valence, issues, size_mean, arrests_any, 
+  dplyr::select(date, locality, state, type, actors, claims, valence, issues, size_mean, arrests_any, 
          injuries_crowd_any, injuries_police_any, property_damage_any, PLACEFIPS )
 
 
 ccc <- filter(ccc, date < as.Date("2020-09-01" ))
 ccc <- filter(ccc, date > as.Date("2017-01-01" ))
 ccc <- ccc %>%
-  mutate(cccPreGF = ifelse(date >= "2017-01-01" & date <= "2020-05-20", 1, 0),
-         cccPostGF = ifelse(date>= "2020-05-20" & date <= "2020-09-01", 1, 0))
+  mutate(cccPreGF = ifelse(date >= "2017-01-01" & date < "2020-05-25", 1, 0),
+         cccPostGF = ifelse(date >= "2020-05-25" & date <= "2020-09-01", 1, 0))
 
 
 
@@ -124,7 +152,7 @@ head(ProtestTotal)
 write.csv(ProtestTotal, "/Users/aricaschuett/Documents/protest/Shea + Arica/ProtestTotalFull.csv")
 
 AntiTrumpProtestPreGF <- ccc %>%
-  filter(date <= "2020-05-25" & valence == 1) %>%
+  filter(date < "2020-05-25" & valence == 1) %>%
   group_by(PLACEFIPS) %>%
   summarize(AntiTrumpProtestPreGFCount = n()) 
 write.csv(AntiTrumpProtestPreGF, "/Users/aricaschuett/Documents/protest/Shea + Arica/AntiTrumpProtestPreGF.csv")
@@ -136,7 +164,7 @@ head(ProtestTotalPreGF)
 write.csv(ProtestTotalPreGF, "/Users/aricaschuett/Documents/protest/Shea + Arica/ProtestTotalPreGF.csv")
 
 PostGFProtestCount <- ccc %>%
-  filter(date > ymd("2020-05-25")) %>%
+  filter(date >= ymd("2020-05-25")) %>%
   group_by(PLACEFIPS) %>%
   summarize(PostGFProtestCount = n()) 
 head(PostGFProtestCount)
@@ -179,20 +207,43 @@ sum(acs_wide$BlackPop)
 
 head(ProtestTotal)
 head(mapping)
-ProtestByCity <- left_join(ProtestTotal, PostGFProtestCount, by= "PLACEFIPS", all = T) 
-ProtestByCity <- left_join(ProtestByCity, VictimCount, by= "PLACEFIPS", all = T)
-ProtestByCity <- left_join(ProtestByCity, BlackVictimCount, by= "PLACEFIPS", all = T)
-ProtestByCity <- left_join(ProtestByCity, VictimCountPreGF, by= "PLACEFIPS", all = T)
-ProtestByCity <- left_join(ProtestByCity, BlackVictimCountPreGF, by= "PLACEFIPS", all = T)
-ProtestByCity <- left_join(ProtestByCity, VictimsPreGF2020, by= "PLACEFIPS", all = T)
-ProtestByCity <- left_join(ProtestByCity, VictimHighThreat, by= "PLACEFIPS", all = T)
-ProtestByCity <- left_join(ProtestByCity, AntiTrumpProtestPreGF, by= "PLACEFIPS", all = T)
-ProtestByCity <- left_join(ProtestByCity, VictimsPreGF2020Blk, by= "PLACEFIPS", all = T)
-ProtestByCity <- left_join(ProtestByCity, ProtestTotalPreGF, by= "PLACEFIPS", all = T)
-
 acs_wide$PLACEFIPS <- acs_wide$GEOID
 
-ProtestByCity <- left_join(acs_wide, ProtestByCity, by= "PLACEFIPS", all = T)
+
+# Store original column names from acs_wide
+original_cols <- names(acs_wide)
+
+# Perform all joins in a clean pipeline
+ProtestByCity <- acs_wide %>%
+  left_join(ProtestTotal, by = "PLACEFIPS") %>%
+  left_join(PostGFProtestCount, by = "PLACEFIPS") %>%
+  left_join(VictimCount, by = "PLACEFIPS") %>%
+  left_join(BlackVictimCount, by = "PLACEFIPS") %>%
+  left_join(VictimCountPreGF, by = "PLACEFIPS") %>%
+  left_join(BlackVictimCountPreGF, by = "PLACEFIPS") %>%
+  left_join(VictimsPreGF2020, by = "PLACEFIPS") %>%
+  left_join(VictimHighThreat, by = "PLACEFIPS") %>%
+  left_join(AntiTrumpProtestPreGF, by = "PLACEFIPS") %>%
+  left_join(VictimsPreGF2020Blk, by = "PLACEFIPS") %>%
+  left_join(ProtestTotalPreGF, by = "PLACEFIPS") %>%
+  mutate(across(-all_of(original_cols), ~ replace_na(.x, 0)))
+
+
+
+#ProtestByCity <- left_join(acs_wide, ProtestTotal, by= "PLACEFIPS", all = T)
+#ProtestByCity <- left_join(ProtestByCity, PostGFProtestCount, by= "PLACEFIPS", all = T) 
+#ProtestByCity <- left_join(ProtestByCity, VictimCount, by= "PLACEFIPS", all = T)
+#ProtestByCity <- left_join(ProtestByCity, BlackVictimCount, by= "PLACEFIPS", all = T)
+#ProtestByCity <- left_join(ProtestByCity, VictimCountPreGF, by= "PLACEFIPS", all = T)
+#ProtestByCity <- left_join(ProtestByCity, BlackVictimCountPreGF, by= "PLACEFIPS", all = T)
+#ProtestByCity <- left_join(ProtestByCity, VictimsPreGF2020, by= "PLACEFIPS", all = T)
+#ProtestByCity <- left_join(ProtestByCity, VictimHighThreat, by= "PLACEFIPS", all = T)
+#ProtestByCity <- left_join(ProtestByCity, AntiTrumpProtestPreGF, by= "PLACEFIPS", all = T)
+#ProtestByCity <- left_join(ProtestByCity, VictimsPreGF2020Blk, by= "PLACEFIPS", all = T)
+#ProtestByCity <- left_join(ProtestByCity, ProtestTotalPreGF, by= "PLACEFIPS", all = T)
+
+
+
 
 
 
@@ -204,4 +255,4 @@ ProtestByCity$BlackPopPct <- ProtestByCity$BlackPop / ProtestByCity$population
 ProtestByCity$BlackPovRate <- ProtestByCity$BlackPov / ProtestByCity$BlackPop
 
 
-write.csv(ProtestByCity, "/Users/aricaschuett/Documents/protest/ProtestByCity3-24.csv")
+write.csv(ProtestByCity, "/Users/aricaschuett/Documents/protest/ProtestByCity3-25.csv")

@@ -25,17 +25,17 @@ acs_data <- get_acs(geography = "place", variables= c(population = "B01003_001",
                     geometry = T)
 
 # geometry=TRUE automatically downloads shapefiles and computes centroids:
-acs_data <- acs_data %>% mutate(
-  longitude = st_coordinates(st_centroid(geometry))[,1],
-  latitude = st_coordinates(st_centroid(geometry))[,2]
-)
+#acs_data <- acs_data %>% mutate(
+#  longitude = st_coordinates(st_centroid(geometry))[,1],
+#  latitude = st_coordinates(st_centroid(geometry))[,2]
+#)
 
 acs_data <- acs_data %>% dplyr::select(-moe)
-acs_data$geometry <- NULL
+#acs_data$geometry <- NULL
 ################
 
 acs_wide <- acs_data %>%
-  pivot_wider(names_from = variable, values_from = estimate)
+  pivot_wider(names_from = "variable", values_from = "estimate")
 
 acs_wide <- acs_wide %>%
   filter( population > 500)
@@ -58,7 +58,7 @@ mapping <- mapping %>%
 mapping$wapo_threat_level[ mapping$wapo_threat_level=="Attack"|
                              mapping$wapo_threat_level=="Brandished Weapon" |
                              mapping$wapo_threat_level=="Sudden Threatening Movement" |
-                             mapping$wapo_threat_level=="Used Weapon"]<-"High"   ### unclear if including brandishing or suddent threatening movement as HIGH threat
+                             mapping$wapo_threat_level=="Used Weapon"]<-"High"   ### unclear if including brandishing or sudden threatening movement as HIGH threat
 
 mapping$date <- mdy(mapping$date)
 
@@ -85,8 +85,12 @@ acs_mapping <- left_join(mapping, acs_wide, by = c("PLACEFIPS" = "GEOID"))
 write.csv(acs_mapping, "/Users/aricaschuett/Documents/protest/Shea + Arica/ACS_Mapping.csv")
 
 
+#ccc_spatial_join <- read.csv("/Users/aricaschuett/Documents/protest/Shea + Arica/ccc_spatial_join.csv", colClasses = c("PLACEFIPS" = "character"))
+
+#ccc_spatial_join2 <- left_join(acs_wide, ccc_spatial_join, by = c("GEOID"= "PLACEFIPS" ))
 
 
+#write.csv(ccc_spatial_join2, "/Users/aricaschuett/Documents/protest/Shea + Arica/ccc_spatial_join2.csv")
 
 
 
